@@ -1,74 +1,58 @@
-## ---------------------------
-##
-## Script name: generate_lineup.R
-##
-## Purpose of script:
-##
-## Author: Tyler Wiederich
-##
-## Date Created: 2024-02-17
-##
-## ---------------------------
-##
-## Notes:
-##   Block is subject
-##   Use 5 ratios per block (20 total runs)
-##   CRD with plot types
-##
-## ---------------------------
 
 
-generate_lineup <- function(ratio = NULL, plot = NULL, wp.size = 5, file=NULL){
-  require(tidyverse)
-  
+
+create_lineup <- function(ratio = NULL, plot = NULL, wp.size = 5, output = c('both', 'design', 'data')){
+  #Only take first output option
+  output <- output[1]
+
   #Default treatments
   if(is.null(ratio)){
     ratio <- factor(seq(0.1, 0.9, by = 0.1))
   } else{
     ratio <- factor(ratio)
   }
-  
+
   if(is.null(plot)){
     plot <- c('2d', '3ddc', '3dds', '3dp')
   } else{
     plot <- factor(plot)
   }
 
-  #Whole-plot 
+  #Whole-plot
   bib <- agricolae::design.bib(
     trt = ratio,
     k = wp.size
   )
-  
-  wp <- bib$book %>% 
+
+  wp <- bib$book %>%
     mutate(block = as.numeric(block)-1,
-           trt.ratio = ratio) %>% 
+           trt.ratio = ratio) %>%
     select(-c(ratio, plots))
-  
+
   #Split-plot
   sp <- tibble(
     trt.ratio = rep(ratio, times = length(plot)),
     plot = rep(plot, each = length(ratio))
   )
-  
+
   #Design
   design <- left_join(wp, sp, by = 'trt.ratio',
                       relationship = 'many-to-many')
-  
-  
-  #Assign datasets
-  #9 datasets per type? or 3?
-  
+  if(output=='design') return(design)
+
+
   datasets <- tibble(
     plot = rep(plot, each = length(ratio))
-  ) %>% 
-    group_by(plot) %>% 
-    mutate(plotID = 1:n(), dummy = 1) %>% 
-    mutate(nest(generate_data())) %>% 
+  ) %>%
+    group_by(plot) %>%
+    mutate(plotID = 1:n()) %>%
+    mutate(nest(create_data())) %>%
     unnest(data)
-  
-  if(!is.null(file)) write.csv(datasets, file)
-  
-  return(datasets)
-  
+
+  if(output=='data') return(datasets)
+  if(output=='both') return(list(design = design,
+                                 data = datasets))
 }
+
+pkg.data <- create_lineup()
+?use_data

@@ -1,47 +1,41 @@
-#' @import tibble
-#' @import tidyr
-#' @import dplyr
-#' @export
-generate_grid <- function(values, grid_dimensions = c(10, 10), use_ratios = T, ...){
+#' Create a grid with ratio inputs at random locations
+#'
+#' @param inputs Ratios to be placed on a grid
+#' @param dims Number of units for x and y grid coordinates
+#' @param ... Additional args
+#'
+#' @return A dataframe
+#'
+#' @examples
+#' create_grid(c(0.1, 0.5, 0.9), dims = c(4,4))
+#'
+create_grid <- function(inputs, dims = c(10, 10)){
 
   #Check valid conditions
-  if(length(use_ratios) > 1 | !is.logical(use_ratios)) stop('use_ratios must be a single logical value.')
+  if(!all(is.numeric(inputs)) & all(inputs >= 0 & inputs <= 1)) stop('Input values must be numeric and between 0 and 1')
+  if(length(dims) != 2) stop('Two dimension values are required (x, y)')
+  if((2*length(inputs)) > prod(dims)) stop('The number of input values exceeds the maximum grid space')
 
   #Create grid
-  x <- 1:grid_dimensions[1]; y <- 1:grid_dimensions[2]
+  x <- 1:dims[1]; y <- 1:dims[2]
   base_grid <- expand_grid(x,y)
 
-  #Generate values from ratios
-  if(use_ratios){
-    ratio_values <- function(values){
-      larger <- runif(n = length(values), min = 50, max = 100)
-      smaller <- values*larger
-      comparisons <- tibble(smaller, larger, ratio = values) %>%
-        pivot_longer(smaller:larger, names_to = 'bar', values_to = 'z') %>%
-        mutate(rownum = 1:n(),
-               label = letters[rownum]) %>%
-        select(-rownum)
-      return(comparisons)
-    }
-    vals <- ratio_values(values)
-  } else {
-    # #Generate ratios from values
-    # values_ratio <- function(values){
-    #   comparisons <- expand_grid(smaller = values, larger = values) %>%
-    #     filter(smaller < larger) %>%
-    #     mutate(ratio = smaller/larger) %>%
-    #     pivot_longer(smaller:larger, names_to = 'bar', values_to = 'z') %>%
-    #     mutate(rownum = 1:n(), label = letters[rownum]) %>%
-    #     select(ratio, bar, z, label)
-    #   return(comparisons)
-    # }
-    vals <- values_ratio(values)
-  }
+  #Generate value pairs based on inputs
+  larger <- runif(n = length(inputs), min = 50, max = 100)
+  smaller <- inputs*larger
+
+
+  comparisons <- tibble(smaller, larger, ratio = inputs) %>%
+    pivot_longer(smaller:larger, names_to = 'bar', values_to = 'z') %>%
+    mutate(rownum = 1:n(),
+           label = letters[rownum]) %>%
+    select(-rownum)
+
   #Location of values on grid
-  value_locs <- sample(1:nrow(base_grid), size = nrow(vals))
+  value_locs <- sample(1:nrow(base_grid), size = nrow(comparisons))
 
   #Insert values into grid
-  base_grid[value_locs, c('ratio', 'bar', 'z', 'label')] <- vals
+  base_grid[value_locs, c('ratio', 'bar', 'z', 'label')] <- comparisons
 
   #Return grid
   return(base_grid)
@@ -49,29 +43,52 @@ generate_grid <- function(values, grid_dimensions = c(10, 10), use_ratios = T, .
 
 
 
-
-generate_kernel = function(x, y, z, kernel_dist = 2, ...){
+#' Generate a density around a coordinate location
+#'
+#' @param x Coordinate on x-axis
+#' @param y Coordinate on y-axis
+#' @param z Height of target bar
+#' @param span Number of grid spaces to span over in the x and y direction
+#' @param mult Additional multiplier to surrounding bar. By default, a value of 1 uses the inverse of the Euclidean distance on grid coordinates with respect to the given x and y inputs.
+#' @param ... Additional args to pass to `rnorm`
+#'
+#' @return A dataframe
+#'
+#' @examples
+#' grid_distribution(4, 6, z=50, span=3, sd=7)
+grid_distribution = function(x, y, z, span = 2, mult = 1, ...){
   if(is.na(z)) return(NA)
   x.save = x; y.save = y; z.save = z
-  x <- seq(x - kernel_dist, x + kernel_dist, by = 1)
-  y <- seq(y - kernel_dist, y + kernel_dist, by = 1)
+  x <- seq(x - span, x + span, by = 1)
+  y <- seq(y - span, y + span, by = 1)
 
-  # z.star <- rnorm(length(x)*length(y), mean = z, ...)
-  z.star <- rbeta(length(x)*length(y), ...)*z
+  z.star <- rnorm(length(x)*length(y), mean = z, ...)
+  # z.star <- z*rbeta(length(x)*length(y), ...)
 
   res <- expand.grid(x=x, y=y) %>%
-    mutate(z.star = z.star,
+    mutate(dist = 1/sqrt((x-x.save)^2 + (y-y.save)^2)) %>%
+    mutate(z.star = z.star*dist*mult,
+           z.star = ifelse(z.star <0, 0, z.star),
            z.star = ifelse(x==x.save & y==y.save, z.save, z.star)) %>%
-    filter(x > 0 & y > 0)
+    select(-dist)
   return(res)
 }
 
 
-generate_data <- function(ratios = NULL){
+
+
+
+
+
+create_data <- function(ratios = NULL, ...){
+
+  #Set default ratios if none provided
   if(is.null(ratios)) ratios <- seq(0.1, 0.9, by = 0.1)
-  value_grid <- generate_grid(ratios)
+
+  #Create and populate grid with ratios
+  value_grid <- create_grid(ratios)
   dataset <- value_grid %>%
-    mutate(contribution = pmap(list(x, y, z), generate_kernel, shape1 = 4, shape2 = 1)) %>%
+    mutate(contribution = pmap(list(x, y, z), grid_distribution, ...)) %>%
     dplyr::select(contribution) %>%
     filter(!is.na(contribution)) %>%
     unnest(contribution) %>%
@@ -79,7 +96,10 @@ generate_data <- function(ratios = NULL){
     filter(is.na(z) | z.star == z) %>%
     group_by(x,y, label, ratio, bar) %>%
     summarize(z = mean(z.star, na.rm = T),
-              .groups = 'drop') %>%
-    mutate(z = ifelse(is.nan(z), rnorm(1, 50, 10), z))
+              .groups = 'drop')
+    # mutate(z = ifelse(is.nan(z), rnorm(1, 50, 10), z))
+
+  dataset[is.na(dataset[,'z']),'z'] <- rnorm(sum(is.na(dataset[,'z'])), mean = 50, sd = 10)
+
   return(dataset)
 }
