@@ -1,0 +1,14 @@
+Package: heat3D
+Type: Package
+Title: A Study on 3D Printed Heatmaps
+Version: 0.0.1
+Authors@R:
+    person("Tyler", "Wiederich", , "twiederich2@huskers.unl.edu", role = c("aut", "cre"), comment = c(ORCID = "0009-0006-8131-5822"))
+Description: Creates an experiment using 3D heatmaps. The design uses a BIB whole plot structure for tested ratios with a CRD split plot structure for plot types.
+    Maybe some more details here?
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.1
+Imports: 
+    ggplot2
