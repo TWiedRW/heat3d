@@ -56,6 +56,7 @@ create_lineup <- function(ratio = NULL, plot = NULL, wp.size = 5, output = c('bo
   ) %>%
     group_by(plot) %>%
     mutate(plotID = 1:n()) %>%
+    ungroup() %>%
     mutate(nest(create_data())) %>%
     unnest(data)
 
