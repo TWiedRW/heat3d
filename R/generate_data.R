@@ -3,12 +3,11 @@
 #' @param inputs Ratios to be placed on a grid
 #' @param dims Number of units for x and y grid coordinates
 #' @param ... Additional args
+#' @import tidyr
+#' @import tibble
+#' @import dplyr
 #'
-#' @return A dataframe
-#'
-#' @examples
-#' create_grid(c(0.1, 0.5, 0.9), dims = c(4,4))
-#'
+#' @return A data frame
 create_grid <- function(inputs, dims = c(10, 10)){
 
   #Check valid conditions
@@ -52,10 +51,10 @@ create_grid <- function(inputs, dims = c(10, 10)){
 #' @param mult Additional multiplier to surrounding bar. By default, a value of 1 uses the inverse of the Euclidean distance on grid coordinates with respect to the given x and y inputs.
 #' @param ... Additional args to pass to `rnorm`
 #'
-#' @return A dataframe
+#' @import dplyr
+#' @import tidyr
 #'
-#' @examples
-#' grid_distribution(4, 6, z=50, span=3, sd=7)
+#' @return A data frame
 grid_distribution = function(x, y, z, span = 2, mult = 1, ...){
   if(is.na(z)) return(NA)
   x.save = x; y.save = y; z.save = z
@@ -65,7 +64,7 @@ grid_distribution = function(x, y, z, span = 2, mult = 1, ...){
   z.star <- rnorm(length(x)*length(y), mean = z, ...)
   # z.star <- z*rbeta(length(x)*length(y), ...)
 
-  res <- expand.grid(x=x, y=y) %>%
+  res <- expand_grid(x=x, y=y) %>%
     mutate(dist = 1/sqrt((x-x.save)^2 + (y-y.save)^2)) %>%
     mutate(z.star = z.star*dist*mult,
            z.star = ifelse(z.star <0, 0, z.star),
@@ -80,6 +79,14 @@ grid_distribution = function(x, y, z, span = 2, mult = 1, ...){
 
 
 
+#' Create a grid structure of values that contain the given ratios
+#'
+#' @param ratios A numeric vector of ratios to use
+#' @import dplyr
+#' @import purrr
+#'
+#' @return A data frame
+#' @export
 create_data <- function(ratios = NULL, ...){
 
   #Set default ratios if none provided

@@ -1,6 +1,16 @@
-
-
-
+#' Create a study lineup
+#'
+#' @param ratio A numeric vector of ratios to test
+#' @param plot A character vector of plot types
+#' @param wp.size Whole-plot block size
+#' @param output Tell the function to produce the design, data, or both
+#'
+#' @importFrom agricolae design.bib
+#' @import dplyr
+#' @import tidyr
+#'
+#' @return A dataframe
+#' @export
 create_lineup <- function(ratio = NULL, plot = NULL, wp.size = 5, output = c('both', 'design', 'data')){
   #Only take first output option
   output <- output[1]
@@ -19,7 +29,7 @@ create_lineup <- function(ratio = NULL, plot = NULL, wp.size = 5, output = c('bo
   }
 
   #Whole-plot
-  bib <- agricolae::design.bib(
+  bib <- design.bib(
     trt = ratio,
     k = wp.size
   )
@@ -53,6 +63,3 @@ create_lineup <- function(ratio = NULL, plot = NULL, wp.size = 5, output = c('bo
   if(output=='both') return(list(design = design,
                                  data = datasets))
 }
-
-pkg.data <- create_lineup()
-?use_data
