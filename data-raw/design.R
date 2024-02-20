@@ -10,7 +10,7 @@ usethis::use_data(design, overwrite = TRUE)
 #' Data for 218 study
 usethis::use_data(design_data, overwrite = TRUE)
 
-design_data %>%
-  group_by(plot, plotID) %>%
-  nest() %>%
-  mutate(hash = rlang::hash(data))
+# design_data %>%
+#   group_by(plot, plotID) %>%
+#   nest() %>%
+#   mutate(hash = rlang::hash(data))
