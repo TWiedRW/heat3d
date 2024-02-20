@@ -56,8 +56,9 @@ create_lineup <- function(ratio = NULL, plot = NULL, wp.size = 5, output = c('bo
   ) %>%
     group_by(plot) %>%
     mutate(plotID = 1:n()) %>%
-    ungroup() %>%
-    mutate(nest(create_data())) %>%
+    group_by(plot, plotID) %>%
+    mutate(data = nest(create_data())) %>%
+    # mutate(hash = rlang::hash(data)) %>% #Creates hash to check uniqueness
     unnest(data)
 
   if(output=='data') return(datasets)
